@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{AB82FC41-DB36-4067-AD44-7D2F0EDA2E08}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SmartLab.MuRata</RootNamespace>
+    <AssemblyName>SmartLab.MuRata</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Config\DHCPConfig.cs" />
+    <Compile Include="Config\IConfig.cs" />
+    <Compile Include="Config\SoftAPConfig.cs" />
+    <Compile Include="Config\UARTConfig.cs" />
+    <Compile Include="ErrorCode\CMDCode.cs" />
+    <Compile Include="ErrorCode\SNICCode.cs" />
+    <Compile Include="ErrorCode\WIFICode.cs" />
+    <Compile Include="Indication\HTTPResponseIndication.cs" />
+    <Compile Include="Indication\SocketReceiveInidcation.cs" />
+    <Compile Include="Indication\TCPStatusIndication.cs" />
+    <Compile Include="Indication\PowerUpIndication.cs" />
+    <Compile Include="Indication\SSIDRecordIndication.cs" />
+    <Compile Include="Indication\UDPReceivedIndication.cs" />
+    <Compile Include="Indication\WIFIConnectionIndication.cs" />
+    <Compile Include="MuRata.cs" />
+    <Compile Include="Payload.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Response\HTTPResponse.cs" />
+    <Compile Include="Response\SocketStartReceiveResponse.cs" />
+    <Compile Include="Response\CreateSocketResponse.cs" />
+    <Compile Include="Response\DHCPInfoResponse.cs" />
+    <Compile Include="Response\InitializationResponse.cs" />
+    <Compile Include="Response\SendFromSocketResponse.cs" />
+    <Compile Include="Response\VersionInfoResponse.cs" />
+    <Compile Include="Response\WIFIStatusResponse.cs" />
+    <Compile Include="Type\BSSType.cs" />
+    <Compile Include="Type\CommandID.cs" />
+    <Compile Include="Type\DHCPMode.cs" />
+    <Compile Include="Type\HTTPContent.cs" />
+    <Compile Include="Type\HTTPMethod.cs" />
+    <Compile Include="Type\IPAddress.cs" />
+    <Compile Include="Type\ResetCode.cs" />
+    <Compile Include="Type\ScanType.cs" />
+    <Compile Include="Type\SocketSentOption.cs" />
+    <Compile Include="Type\WIFIInfo.cs" />
+    <Compile Include="Type\WIFIInterface.cs" />
+    <Compile Include="Type\ResponseFlag.cs" />
+    <Compile Include="Type\SecurityMode.cs" />
+    <Compile Include="Type\SubCommandID.cs" />
+    <Compile Include="Type\WIFINetwork.cs" />
+    <Compile Include="Type\WIFINetworkDetail.cs" />
+    <Compile Include="Type\WIFIStatusCode.cs" />
+    <Compile Include="Type\WPSMode.cs" />
+    <Compile Include="UARTFrame.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

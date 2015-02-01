@@ -1,0 +1,37 @@
+﻿namespace SmartLab.MuRata.ErrorCode
+{
+    public enum SNICCode
+    {
+        SNIC_NORESPONSE = -1,
+        SNIC_SUCCESS = 0x00,
+        SNIC_FAIL = 0x01,
+        SNIC_INIT_FAIL = 0x02,
+        SNIC_CLEANUP_FAIL = 0x03,
+        SNIC_GETADDRINFO_FAIL = 0x04,
+        SNIC_CREATE_SOCKET_FAIL = 0x05,
+        SNIC_BIND_SOCKET_FAIL = 0x06,
+        SNIC_LISTEN_SOCKET_FAIL = 0x07,
+        SNIC_ACCEPT_SOCKET_FAIL = 0x08,
+        SNIC_SOCKET_CLOSED = 0x0B,
+        SNIC_CLOSE_SOCKET_FAIL = 0x0C,
+        SNIC_PACKET_TOO_LARGE = 0x0D,
+        SNIC_SEND_FAIL = 0x0E,
+        SNIC_CONNECT_TO_SERVER_FAIL = 0x0F,
+        SNIC_NOT_ENOUGH_MEMORY = 0x10,
+        SNIC_TIMEOUT = 0x11,
+        SNIC_CONNECTION_UP = 0x12,
+        SNIC_GETSOCKOPT_FAIL = 0x13,
+        SNIC_SETSOCKOPT_FAIL = 0x14,
+        SNIC_INVALID_ARGUMENT = 0x15,
+        SNIC_SEND_ARP_FAIL = 0x16,
+        SNIC_INVALID_SOCKET = 0x17,
+        SNIC_COMMAND_PENDING = 0x18,
+        SNIC_SOCKET_NOT_BOUND = 0x19,
+        SNIC_SOCKET_NOT_CONNECTED = 0x1A,
+        SNIC_NO_NETWORK = 0x20,
+        SNIC_INIT_NOT_DONE = 0x21,
+        SNIC_NET_IF_FAIL = 0x22,
+        SNIC_NET_IF_NOT_UP = 0x23,
+        SNIC_DHCP_START_FAIL = 0x24,
+    }
+}
