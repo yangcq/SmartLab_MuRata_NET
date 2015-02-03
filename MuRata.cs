@@ -80,7 +80,7 @@ namespace SmartLab.MuRata
             : this(portName, DEFAULT_BAUDRATE, Parity.None, 8, StopBits.One)
         { }
 
-        public MuRata(String portName, int baudRate, Parity parity, int dataBits, StopBits stopBits)
+        public MuRata(String portName, int baudRate, Parity parity = Parity.None, int dataBits = 8, StopBits stopBits = StopBits.One)
         {
             _sendPayload = new Payload();
             _sendFrame = new UARTFrame();
@@ -1020,7 +1020,7 @@ namespace SmartLab.MuRata
         /// <param name="localIP"></param>
         /// <param name="localPort"></param>
         /// <returns></returns>
-        public CreateSocketResponse SNIC_CreateTCPSocket(bool bind, IPAddress localIP = null, int localPort = 0) { return SNIC_CreateSocket(SubCommandID.SNIC_TCP_CREATE_SOCKET_REQ, bind, localIP, localPort); }
+        public CreateSocketResponse SNIC_CreateTCPSocket(bool bind = false, IPAddress localIP = null, int localPort = 0) { return SNIC_CreateSocket(SubCommandID.SNIC_TCP_CREATE_SOCKET_REQ, bind, localIP, localPort); }
 
         /// <summary>
         /// If Bind option is 0, the socket will not be bound, and Local IP address and Local port should not be present. Otherwise, it will be bound to Local IP address and Local port specified. 0x0 for IP or port are valid, which means system assigned. Port number 5000 is reserved for internal use.
@@ -1030,9 +1030,9 @@ namespace SmartLab.MuRata
         /// <param name="localIP"></param>
         /// <param name="localPort"></param>
         /// <returns></returns>
-        public CreateSocketResponse SNIC_CreateUDPSocket(bool bind, IPAddress localIP = null, int localPort = 0) { return SNIC_CreateSocket(SubCommandID.SNIC_UDP_CREATE_SOCKET_REQ, bind, localIP, localPort); }
+        public CreateSocketResponse SNIC_CreateUDPSocket(bool bind = false, IPAddress localIP = null, int localPort = 0) { return SNIC_CreateSocket(SubCommandID.SNIC_UDP_CREATE_SOCKET_REQ, bind, localIP, localPort); }
 
-        private CreateSocketResponse SNIC_CreateSocket(SubCommandID subID, bool bind, IPAddress localIP = null, int localPort = 0)
+        private CreateSocketResponse SNIC_CreateSocket(SubCommandID subID, bool bind = false, IPAddress localIP = null, int localPort = 0)
         {
             _sendPayload.Rewind();
             _sendPayload.SetSubCommandID(subID);
@@ -1321,7 +1321,7 @@ namespace SmartLab.MuRata
         /// <param name="localIP"></param>
         /// <param name="localPort"></param>
         /// <returns></returns>
-        public CreateSocketResponse SNIC_CreateAdvancedTLSTCP(bool bind, IPAddress localIP = null, int localPort = 0) { return SNIC_CreateSocket(SubCommandID.SNIC_TCP_CREATE_ADV_TLS_SOCKET_REQ, bind, localIP, localPort); }
+        public CreateSocketResponse SNIC_CreateAdvancedTLSTCP(bool bind = false, IPAddress localIP = null, int localPort = 0) { return SNIC_CreateSocket(SubCommandID.SNIC_TCP_CREATE_ADV_TLS_SOCKET_REQ, bind, localIP, localPort); }
 
         /// <summary>
         /// If Bind option is 0, the socket will not be bound, and Local IP address and Local port should not be present. Otherwise, it will be bound to Local IP address and Local port specified. 0x0 for IP or port are valid, which means system assigned. Port number 5000 is reserved for internal use.
@@ -1331,7 +1331,7 @@ namespace SmartLab.MuRata
         /// <param name="localIP"></param>
         /// <param name="localPort"></param>
         /// <returns></returns>
-        public CreateSocketResponse SNIC_CreateSimpleTLSTCP(bool bind, IPAddress localIP = null, int localPort = 0) { return SNIC_CreateSocket(SubCommandID.SNIC_TCP_CREAET_SIMPLE_TLS_SOCKET_REQ, bind, localIP, localPort); }
+        public CreateSocketResponse SNIC_CreateSimpleTLSTCP(bool bind = false, IPAddress localIP = null, int localPort = 0) { return SNIC_CreateSocket(SubCommandID.SNIC_TCP_CREAET_SIMPLE_TLS_SOCKET_REQ, bind, localIP, localPort); }
 
         #endregion
     }
