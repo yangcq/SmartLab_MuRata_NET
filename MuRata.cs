@@ -68,12 +68,14 @@ namespace SmartLab.MuRata
         private const int DEFAULT_WAIT = 10000;
 
         private EventWaitHandle waitEvent = new AutoResetEvent(false);
-        bool isSignal = false;
+        private bool isResponseSignal = false;
+        //private bool isIndicationSignal = false;
+        //private bool handleIndicationMaunally = false;
 
-        SerialPort serialPort;
+        private SerialPort serialPort;
         private byte frameID = 0x00;
 
-        private Payload _sendPayload, _receivePayload, _safePayload;
+        private Payload _sendPayload, _receivePayload;
         private UARTFrame _sendFrame, _receiveFrame;
 
         public MuRata(String portName)
@@ -87,7 +89,7 @@ namespace SmartLab.MuRata
             _receivePayload = new Payload();
             _receiveFrame = new UARTFrame();
             _receiveFrame.SetPayload(_receivePayload);
-            _safePayload = new Payload();
+            _sendPayload = new Payload();
             serialPort = new SerialPort(portName, baudRate, parity, dataBits, stopBits);
         }
 
@@ -116,27 +118,35 @@ namespace SmartLab.MuRata
             serialPort.Close();
         }
 
+        /*
+        public bool HandelIndicationManually 
+        {
+            set { this.handleIndicationMaunally = value; }
+            get { return this.handleIndicationMaunally; }
+        }
+        */
+
         #region Send and Receive
 
         private void Send(bool signal = true)
         {
-            lock (serialPort)
-            {
-                isSignal = signal;
+            _sendPayload.SetResponseFlag(ResponseFlag.Request_or_Indication);
+            _sendFrame.SetACKRequired(false);
 
-                serialPort.BaseStream.WriteByte(UARTFrame.SOM);
+            isResponseSignal = signal;
 
-                serialPort.BaseStream.WriteByte((byte)(_sendFrame.GetL0() | 0x80));
-                serialPort.BaseStream.WriteByte((byte)(_sendFrame.GetL1() | 0x80 | (_sendFrame.GetACKRequired() ? 0x40 : 0x00)));
+            serialPort.BaseStream.WriteByte(UARTFrame.SOM);
 
-                serialPort.BaseStream.WriteByte((byte)((byte)_sendFrame.GetCommandID() | 0x80));
+            serialPort.BaseStream.WriteByte((byte)(_sendFrame.GetL0() | 0x80));
+            serialPort.BaseStream.WriteByte((byte)(_sendFrame.GetL1() | 0x80 | (_sendFrame.GetACKRequired() ? 0x40 : 0x00)));
 
-                serialPort.Write(_sendPayload.GetData(), 0, _sendPayload.GetPosition());
+            serialPort.BaseStream.WriteByte((byte)((byte)_sendFrame.GetCommandID() | 0x80));
 
-                serialPort.BaseStream.WriteByte((byte)(_sendFrame.GetChecksum() | 0x80));
+            serialPort.Write(_sendPayload.GetData(), 0, _sendPayload.GetPosition());
 
-                serialPort.BaseStream.WriteByte(UARTFrame.EOM);
-            }
+            serialPort.BaseStream.WriteByte((byte)(_sendFrame.GetChecksum() | 0x80));
+
+            serialPort.BaseStream.WriteByte(UARTFrame.EOM);
         }
 
         /// <summary>
@@ -177,29 +187,37 @@ namespace SmartLab.MuRata
                     if (FrameReceive() == false)
                         continue;
 
-                    if (this.isSignal && _receiveFrame.GetCommandID() == _sendFrame.GetCommandID() && _receivePayload.GetSubCommandID() == _sendPayload.GetSubCommandID() && _receivePayload.GetFrameID() == _sendPayload.GetFrameID())
+                    if (this.isResponseSignal && _receiveFrame.GetCommandID() == _sendFrame.GetCommandID() && _receivePayload.GetSubCommandID() == _sendPayload.GetSubCommandID() && _receivePayload.GetFrameID() == _sendPayload.GetFrameID())
                     {
-                        this.isSignal = false;
-                        _safePayload.Rewind();
-                        _safePayload.SetContent(_receivePayload.GetData(), 0, _receivePayload.GetPosition());
+                        this.isResponseSignal = false;
+                        _sendPayload.Rewind();
+                        _sendPayload.SetContent(_receivePayload.GetData(), 0, _receivePayload.GetPosition());
                         waitEvent.Set();
                     }
-                    else
+                    else if (_receivePayload.GetResponseFlag() == ResponseFlag.Request_or_Indication)
                     {
-                        if (_receivePayload.GetResponseFlag() == ResponseFlag.Request_Indication)
+                        /*
+                        if (handleIndicationMaunally &&  _receiveFrame.GetCommandID() == _sendFrame.GetCommandID() && _receivePayload.GetSubCommandID() == _sendPayload.GetSubCommandID())
                         {
-                            switch (_receiveFrame.GetCommandID())
-                            {
-                                case CommandID.CMD_ID_GEN:
-                                    this.GENIndication();
-                                    break;
-                                case CommandID.CMD_ID_WIFI:
-                                    this.WIFIIndication();
-                                    break;
-                                case CommandID.CMD_ID_SNIC:
-                                    this.SNICIndication();
-                                    break;
-                            }
+                            this.isIndicationSignal = false;
+                            _sendPayload.Rewind();
+                            _sendPayload.SetContent(_receivePayload.GetData(), 0, _receivePayload.GetPosition());
+                            waitEvent.Set();
+                        }
+                        else if (!handleIndicationMaunally)
+                        {
+                        */
+                        switch (_receiveFrame.GetCommandID())
+                        {
+                            case CommandID.CMD_ID_GEN:
+                                this.GENIndication();
+                                break;
+                            case CommandID.CMD_ID_WIFI:
+                                this.WIFIIndication();
+                                break;
+                            case CommandID.CMD_ID_SNIC:
+                                this.SNICIndication();
+                                break;
                         }
                     }
                 }
@@ -278,13 +296,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new VersionInfoResponse(_safePayload);
+            return new VersionInfoResponse(_sendPayload);
         }
 
         /// <summary>
@@ -306,13 +324,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return CMDCode.GEN_NORESPONSE;
             }
 
-            return (CMDCode)_safePayload.GetData()[2];
+            return (CMDCode)_sendPayload.GetData()[2];
         }
 
         /// <summary>
@@ -332,13 +350,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return CMDCode.GEN_NORESPONSE;
             }
 
-            return (CMDCode)_safePayload.GetData()[2];
+            return (CMDCode)_sendPayload.GetData()[2];
         }
 
         /// <summary>
@@ -360,13 +378,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return CMDCode.GEN_NORESPONSE;
             }
 
-            return (CMDCode)_safePayload.GetData()[2];
+            return (CMDCode)_sendPayload.GetData()[2];
         }
 
         #endregion
@@ -403,13 +421,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return WIFICode.WIFI_NORESPONSE;
             }
 
-            return (WIFICode)_safePayload.GetData()[2];
+            return (WIFICode)_sendPayload.GetData()[2];
 
         }
 
@@ -432,13 +450,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return WIFICode.WIFI_NORESPONSE;
             }
 
-            return (WIFICode)_safePayload.GetData()[2];
+            return (WIFICode)_sendPayload.GetData()[2];
 
         }
 
@@ -480,13 +498,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return WIFICode.WIFI_NORESPONSE;
             }
 
-            return (WIFICode)_safePayload.GetData()[2];
+            return (WIFICode)_sendPayload.GetData()[2];
         }
 
         /// <summary>
@@ -520,13 +538,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return WIFICode.WIFI_NORESPONSE;
             }
 
-            return (WIFICode)_safePayload.GetData()[2];
+            return (WIFICode)_sendPayload.GetData()[2];
         }
 
         /// <summary>
@@ -547,13 +565,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return WIFICode.WIFI_NORESPONSE;
             }
 
-            return (WIFICode)_safePayload.GetData()[2];
+            return (WIFICode)_sendPayload.GetData()[2];
         }
 
         /// <summary>
@@ -575,13 +593,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new WIFIStatusResponse(_safePayload);
+            return new WIFIStatusResponse(_sendPayload);
         }
 
         /// <summary>
@@ -601,16 +619,16 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return 127;
             }
 
-            byte value = _safePayload.GetData()[2];
+            byte value = _sendPayload.GetData()[2];
 
             if (value >> 7 == 0x01)
-                return (~(_safePayload.GetData()[2] - 1) & 0x7F) * -1;
+                return (~(_sendPayload.GetData()[2] - 1) & 0x7F) * -1;
 
             return value;
         }
@@ -646,13 +664,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return WIFICode.WIFI_NORESPONSE;
             }
 
-            return (WIFICode)_safePayload.GetData()[2];
+            return (WIFICode)_sendPayload.GetData()[2];
         }
 
         /// <summary>
@@ -722,13 +740,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return WIFICode.WIFI_NORESPONSE;
             }
 
-            return (WIFICode)_safePayload.GetData()[2];
+            return (WIFICode)_sendPayload.GetData()[2];
         }
 
         #endregion
@@ -756,13 +774,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new InitializationResponse(_safePayload);
+            return new InitializationResponse(_sendPayload);
         }
 
         /// <summary>
@@ -782,13 +800,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return SNICCode.SNIC_NORESPONSE;
             }
 
-            return (SNICCode)_safePayload.GetData()[2];
+            return (SNICCode)_sendPayload.GetData()[2];
         }
 
         /// <summary>
@@ -817,13 +835,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new SendFromSocketResponse(_safePayload);
+            return new SendFromSocketResponse(_sendPayload);
         }
 
         /// <summary>
@@ -855,13 +873,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return SNICCode.SNIC_NORESPONSE;
             }
 
-            return (SNICCode)_safePayload.GetData()[2];
+            return (SNICCode)_sendPayload.GetData()[2];
         }
 
         /// <summary>
@@ -883,13 +901,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new DHCPInfoResponse(_safePayload);
+            return new DHCPInfoResponse(_sendPayload);
         }
 
         /// <summary>
@@ -917,14 +935,14 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            if ((SNICCode)_safePayload.GetData()[2] == SNICCode.SNIC_SUCCESS)
-                return new IPAddress(_safePayload.GetData(), 3);
+            if ((SNICCode)_sendPayload.GetData()[2] == SNICCode.SNIC_SUCCESS)
+                return new IPAddress(_sendPayload.GetData(), 3);
 
             return null;
         }
@@ -966,13 +984,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return SNICCode.SNIC_NORESPONSE;
             }
 
-            return (SNICCode)_safePayload.GetData()[2];
+            return (SNICCode)_sendPayload.GetData()[2];
         }
 
         /// <summary>
@@ -1003,13 +1021,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new SocketStartReceiveResponse(_safePayload);
+            return new SocketStartReceiveResponse(_sendPayload);
         }
 
         /// <summary>
@@ -1057,13 +1075,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new CreateSocketResponse(_safePayload);
+            return new CreateSocketResponse(_sendPayload);
         }
 
         /// <summary>
@@ -1090,13 +1108,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new SocketStartReceiveResponse(_safePayload);
+            return new SocketStartReceiveResponse(_sendPayload);
         }
 
         /// <summary>
@@ -1126,13 +1144,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new SendFromSocketResponse(_safePayload);
+            return new SendFromSocketResponse(_sendPayload);
         }
 
         /// <summary>
@@ -1177,13 +1195,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new SendFromSocketResponse(_safePayload);
+            return new SendFromSocketResponse(_sendPayload);
         }
 
         /// <summary>
@@ -1261,13 +1279,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(content.GetTimeout() * 1000);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new HTTPResponse(_safePayload);
+            return new HTTPResponse(_sendPayload);
         }
 
         /// <summary>
@@ -1304,13 +1322,13 @@ namespace SmartLab.MuRata
 
             waitEvent.WaitOne(DEFAULT_WAIT);
 
-            if (this.isSignal)
+            if (this.isResponseSignal)
             {
-                this.isSignal = false;
+                this.isResponseSignal = false;
                 return null;
             }
 
-            return new HTTPResponse(_safePayload);
+            return new HTTPResponse(_sendPayload);
         }
 
         /// <summary>
@@ -1334,5 +1352,125 @@ namespace SmartLab.MuRata
         public CreateSocketResponse SNIC_CreateSimpleTLSTCP(bool bind = false, IPAddress localIP = null, int localPort = 0) { return SNIC_CreateSocket(SubCommandID.SNIC_TCP_CREAET_SIMPLE_TLS_SOCKET_REQ, bind, localIP, localPort); }
 
         #endregion
+
+        /*
+        #region Indication
+        
+        public SSIDRecordIndication Indication_ScanResult()
+        {
+            isIndicationSignal = true;
+            _sendFrame.SetCommandID(CommandID.CMD_ID_WIFI);
+            _sendPayload.SetSubCommandID(SubCommandID.WIFI_SCAN_RESULT_IND);
+
+            waitEvent.WaitOne(DEFAULT_WAIT);
+
+            if (isIndicationSignal)
+            {
+                isIndicationSignal = false;
+                return null;
+            }
+
+            return new SSIDRecordIndication(_sendPayload);
+        }
+
+        public WIFIConnectionIndication Indication_WiFiStatus()
+        {
+            isIndicationSignal = true;
+            _sendFrame.SetCommandID(CommandID.CMD_ID_WIFI);
+            _sendPayload.SetSubCommandID(SubCommandID.WIFI_NETWORK_STATUS_IND);
+
+            waitEvent.WaitOne(DEFAULT_WAIT);
+
+            if (isIndicationSignal)
+            {
+                isIndicationSignal = false;
+                return null;
+            }
+
+            return new WIFIConnectionIndication(_sendPayload);
+        }
+
+        public PowerUpIndication Indication_Get_PowerUp()
+        {
+            isIndicationSignal = true;
+            _sendFrame.SetCommandID(CommandID.CMD_ID_GEN);
+            _sendPayload.SetSubCommandID(SubCommandID.GEN_PWR_UP_IND);
+
+            waitEvent.WaitOne(DEFAULT_WAIT);
+
+            if (isIndicationSignal)
+            {
+                isIndicationSignal = false;
+                return null;
+            }
+            return new PowerUpIndication(_sendPayload);
+        }
+
+        public TCPStatusIndication Indication_TcpConnectionStatus()
+        {
+            isIndicationSignal = true;
+            _sendFrame.SetCommandID(CommandID.CMD_ID_SNIC);
+            _sendPayload.SetSubCommandID(SubCommandID.SNIC_TCP_CONNECTION_STATUS_IND);
+
+            waitEvent.WaitOne(DEFAULT_WAIT);
+
+            if (isIndicationSignal)
+            {
+                isIndicationSignal = false;
+                return null;
+            }
+            return new TCPStatusIndication(_sendPayload);
+        }
+
+        public SocketReceiveInidcation Indication_SocketReceive()
+        {
+            isIndicationSignal = true;
+            _sendFrame.SetCommandID(CommandID.CMD_ID_SNIC);
+            _sendPayload.SetSubCommandID(SubCommandID.SNIC_CONNECTION_RECV_IND);
+
+            waitEvent.WaitOne(DEFAULT_WAIT);
+
+            if (isIndicationSignal)
+            {
+                isIndicationSignal = false;
+                return null;
+            }
+            return new SocketReceiveInidcation(_sendPayload);
+        }
+
+        public UDPReceivedIndication Indication_UDPReceive()
+        {
+            isIndicationSignal = true;
+            _sendFrame.SetCommandID(CommandID.CMD_ID_SNIC);
+            _sendPayload.SetSubCommandID(SubCommandID.SNIC_UDP_RECV_IND);
+
+            waitEvent.WaitOne(DEFAULT_WAIT);
+
+            if (isIndicationSignal)
+            {
+                isIndicationSignal = false;
+                return null;
+            }
+            return new UDPReceivedIndication(_sendPayload);
+        }
+
+        public HTTPResponseIndication Indication_HTTPResponse()
+        {
+            isIndicationSignal = true;
+            _sendFrame.SetCommandID(CommandID.CMD_ID_SNIC);
+            _sendPayload.SetSubCommandID(SubCommandID.SNIC_HTTP_RSP_IND);
+
+            waitEvent.WaitOne(DEFAULT_WAIT);
+
+            if (isIndicationSignal)
+            {
+                isIndicationSignal = false;
+                return null;
+            }
+            return new HTTPResponseIndication(_sendPayload);
+        }
+
+        #endregion
+        */
     }
 }

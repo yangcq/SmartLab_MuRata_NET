@@ -3,7 +3,7 @@ namespace SmartLab.MuRata.Type
 {
     public enum ResponseFlag
     {
-        Request_Indication,
-        Response_Confirmation
+        Request_or_Indication,
+        Response_or_Confirmation
     }
 }
